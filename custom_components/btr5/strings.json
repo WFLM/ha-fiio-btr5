@@ -1,0 +1,32 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to FiiO BTR5",
+        "description": "Enter the Bluetooth MAC address of your BTR5. It will be sent one battery-level read as a one-time connectivity check before saving.",
+        "data": {
+          "mac": "Bluetooth MAC address"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "This BTR5 is already configured in Home Assistant."
+    },
+    "error": {
+      "invalid_mac": "That doesn't look like a Bluetooth MAC address (expected format AA:BB:CC:DD:EE:FF).",
+      "cannot_connect": "Could not reach the BTR5 over Bluetooth. Make sure it is powered on, in range, and not already connected to another host."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "connection_status": {
+        "state": {
+          "one_time": "One-time",
+          "disconnected": "Disconnected",
+          "connecting": "Connecting…",
+          "connected": "Connected"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,4 @@
+# pytest-homeassistant-custom-component pins the whole Home Assistant test
+# harness (including pytest and pytest-asyncio), so it is the only entry here.
+# 0.13.356 pulls homeassistant==2026.8.2 and requires Python >= 3.14.
+pytest-homeassistant-custom-component==0.13.356
