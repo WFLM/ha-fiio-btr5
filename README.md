@@ -38,14 +38,16 @@ Home Assistant instead.
   fresh SDP discovery + RFCOMM handshake. With "Stay Connected" on, that
   connection is already open, so you can set the Debounce Window down to
   its minimum (0.1s) and still get near-instant per-press response.
-- Adds a battery sensor (percentage), polled every 10 minutes over the same
-  Bluetooth connection mechanism, serialized against button presses so a
-  poll and a press never open two simultaneous Bluetooth sessions.
+- Reads the battery internally every 10 minutes as a lightweight connection
+  check, serialized against button presses. The value is deliberately not
+  exposed as a Home Assistant entity.
 - Adds a "Stay Connected" switch (under the device's Configuration
-  section), off by default. Turning it on opens one Bluetooth connection
-  and keeps it open; while on, button presses and battery polls reuse
-  that connection instead of doing a fresh SDP discovery + RFCOMM
-  handshake each time, so responses are near-instant. While the switch
+  section), on by default. Its value is stored in the config entry, so an
+  integration reload or Home Assistant restart does not reset it. Turning
+  it on opens one Bluetooth connection and keeps it open; while on, button
+  presses and battery polls reuse that connection instead of doing a fresh
+  SDP discovery + RFCOMM handshake each time, so responses are near-instant.
+  While the switch
   is on, any failure on the held connection (for example, the BTR5 was
   powered off and back on) triggers automatic reconnect attempts — a
   fresh SDP discovery + RFCOMM handshake, retried a bounded number of

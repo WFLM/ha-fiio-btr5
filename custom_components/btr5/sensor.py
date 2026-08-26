@@ -7,15 +7,14 @@ from datetime import timedelta
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
-    SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import PERCENTAGE, EntityCategory
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import (
-    CoordinatorEntity,
     DataUpdateCoordinator,
     UpdateFailed,
 )
@@ -41,6 +40,12 @@ async def async_setup_entry(
 ) -> None:
     mac = entry.data["mac"]
     lock: asyncio.Lock = hass.data[DOMAIN][entry.entry_id]["lock"]
+    entity_registry = er.async_get(hass)
+    legacy_battery_entity_id = entity_registry.async_get_entity_id(
+        "sensor", DOMAIN, f"{entry.entry_id}_battery"
+    )
+    if legacy_battery_entity_id is not None:
+        entity_registry.async_remove(legacy_battery_entity_id)
 
     async def _async_update_data() -> int:
         persistent = hass.data[DOMAIN][entry.entry_id].get("persistent")
@@ -60,37 +65,12 @@ async def async_setup_entry(
         update_interval=timedelta(minutes=BATTERY_POLL_INTERVAL_MINUTES),
     )
     hass.data[DOMAIN][entry.entry_id]["battery_coordinator"] = coordinator
+    hass.data[DOMAIN][entry.entry_id]["battery_poll_unsubscribe"] = (
+        coordinator.async_add_listener(lambda: None)
+    )
     await coordinator.async_refresh()
 
-    async_add_entities(
-        [
-            Btr5BatterySensor(entry, mac, coordinator),
-            Btr5ConnectionStatusSensor(entry, mac),
-        ]
-    )
-
-
-class Btr5BatterySensor(CoordinatorEntity[DataUpdateCoordinator[int]], SensorEntity):
-    _attr_device_class = SensorDeviceClass.BATTERY
-    _attr_native_unit_of_measurement = PERCENTAGE
-    _attr_state_class = SensorStateClass.MEASUREMENT
-
-    def __init__(
-        self, entry: ConfigEntry, mac: str, coordinator: DataUpdateCoordinator
-    ) -> None:
-        super().__init__(coordinator)
-        self._attr_name = "Battery"
-        self._attr_unique_id = f"{entry.entry_id}_battery"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, mac)},
-            name="FiiO BTR5",
-            manufacturer="FiiO",
-            model="BTR5 2021",
-        )
-
-    @property
-    def native_value(self) -> int | None:
-        return self.coordinator.data
+    async_add_entities([Btr5ConnectionStatusSensor(entry, mac)])
 
 
 class Btr5ConnectionStatusSensor(SensorEntity):

@@ -10,6 +10,7 @@ from pytest_homeassistant_custom_component.common import (
 
 from custom_components.btr5 import gaia
 from custom_components.btr5.const import (
+    CONF_STAY_CONNECTED,
     DEFAULT_DEBOUNCE_SECONDS,
     DEFAULT_STEP_SIZE,
     DOMAIN,
@@ -17,7 +18,11 @@ from custom_components.btr5.const import (
 
 
 async def _setup_entry(hass, options=None):
-    entry = MockConfigEntry(domain=DOMAIN, data={"mac": "40:ED:98:1A:A2:C9"}, options=options or {})
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={"mac": "40:ED:98:1A:A2:C9"},
+        options={CONF_STAY_CONNECTED: False, **(options or {})},
+    )
     entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()

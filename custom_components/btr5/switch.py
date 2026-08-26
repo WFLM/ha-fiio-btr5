@@ -7,12 +7,11 @@ from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import gaia
-from .const import DEFAULT_TIMEOUT, DOMAIN
+from .const import CONF_STAY_CONNECTED, DEFAULT_STAY_CONNECTED, DEFAULT_TIMEOUT, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -25,10 +24,10 @@ async def async_setup_entry(
 
 
 class Btr5StayConnectedSwitch(SwitchEntity):
-    """Opt-in: keep one Bluetooth connection open instead of one per action.
+    """Keep one Bluetooth connection open instead of one per action.
 
     Purely a latency optimization for the next single button press or
-    battery poll — not a guarantee of connectivity. See PersistentConnection
+    internal battery poll — not a guarantee of connectivity. See PersistentConnection
     in gaia.py.
     """
 
@@ -40,7 +39,9 @@ class Btr5StayConnectedSwitch(SwitchEntity):
         self._mac = mac
         self._attr_name = "Stay Connected"
         self._attr_unique_id = f"{entry.entry_id}_stay_connected"
-        self._attr_is_on = False
+        self._attr_is_on = entry.options.get(
+            CONF_STAY_CONNECTED, DEFAULT_STAY_CONNECTED
+        )
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, mac)},
             name="FiiO BTR5",
@@ -51,19 +52,18 @@ class Btr5StayConnectedSwitch(SwitchEntity):
     def _data(self) -> dict:
         return self.hass.data[DOMAIN][self._entry.entry_id]
 
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        if CONF_STAY_CONNECTED not in self._entry.options:
+            self._save_preference(self._attr_is_on)
+        if self._attr_is_on:
+            await self._async_open_persistent_connection()
+
     async def async_turn_on(self, **kwargs) -> None:
-        lock: asyncio.Lock = self._data()["lock"]
-        persistent = gaia.PersistentConnection(self._mac)
-        async with lock:
-            try:
-                await self.hass.async_add_executor_job(persistent.open, DEFAULT_TIMEOUT)
-            except gaia.GaiaError as exc:
-                raise HomeAssistantError(
-                    f"Could not open a persistent Bluetooth connection to the BTR5: {exc}"
-                ) from exc
-        self._data()["persistent"] = persistent
         self._attr_is_on = True
+        self._save_preference(True)
         self.async_write_ha_state()
+        await self._async_open_persistent_connection()
 
     async def async_turn_off(self, **kwargs) -> None:
         lock: asyncio.Lock = self._data()["lock"]
@@ -72,9 +72,34 @@ class Btr5StayConnectedSwitch(SwitchEntity):
             async with lock:
                 await self.hass.async_add_executor_job(persistent.close)
         self._attr_is_on = False
+        self._save_preference(False)
         self.async_write_ha_state()
 
     async def async_will_remove_from_hass(self) -> None:
         persistent = self._data().pop("persistent", None)
         if persistent is not None:
             await self.hass.async_add_executor_job(persistent.close)
+
+    def _save_preference(self, enabled: bool) -> None:
+        self.hass.config_entries.async_update_entry(
+            self._entry,
+            options={**self._entry.options, CONF_STAY_CONNECTED: enabled},
+        )
+
+    async def _async_open_persistent_connection(self) -> None:
+        persistent = self._data().get("persistent")
+        if persistent is None:
+            persistent = gaia.PersistentConnection(self._mac)
+            self._data()["persistent"] = persistent
+
+        lock: asyncio.Lock = self._data()["lock"]
+        async with lock:
+            try:
+                await self.hass.async_add_executor_job(persistent.open, DEFAULT_TIMEOUT)
+            except gaia.GaiaError as exc:
+                _LOGGER.warning(
+                    "Stay Connected remains enabled for BTR5 %s, but the initial "
+                    "connection failed: %s",
+                    self._mac,
+                    exc,
+                )
