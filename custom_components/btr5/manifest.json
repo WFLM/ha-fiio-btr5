@@ -1,11 +1,14 @@
 {
   "domain": "btr5",
-  "name": "FiiO BTR5",
+  "name": "FiiO BTR5 USB DAC Remote",
+  "after_dependencies": ["bluetooth"],
+  "bluetooth": [{ "connectable": false, "local_name": "FiiO BTR5*" }],
+  "categories": ["media_entertainment.speakers_audio"],
   "codeowners": ["@WFLM"],
   "config_flow": true,
-  "documentation": "https://github.com/WFLM/ha-fiio-btr5",
+  "documentation": "https://github.com/WFLM/ha-fiio-btr5-usb-dac-remote",
   "iot_class": "local_polling",
-  "issue_tracker": "https://github.com/WFLM/ha-fiio-btr5/issues",
+  "issue_tracker": "https://github.com/WFLM/ha-fiio-btr5-usb-dac-remote/issues",
   "requirements": [],
-  "version": "0.1.1"
+  "version": "0.1.2"
 }

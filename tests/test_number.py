@@ -20,12 +20,12 @@ from custom_components.btr5.const import (
 async def _setup_entry(hass, options=None):
     entry = MockConfigEntry(
         domain=DOMAIN,
-        data={"mac": "40:ED:98:1A:A2:C9"},
+        data={"mac": "00:00:5E:00:53:01"},
         options={CONF_STAY_CONNECTED: False, **(options or {})},
     )
     entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(entry.entry_id)
-    await hass.async_block_till_done()
+    await hass.async_block_till_done(wait_background_tasks=True)
     return entry
 
 
@@ -94,7 +94,7 @@ async def test_button_press_uses_the_number_entities_current_values(hass, monkey
     monkeypatch.setattr(
         gaia,
         "send_volume_steps",
-        lambda mac, direction, count, timeout: calls.append((direction, count)),
+        lambda mac, steps, timeout: calls.append(steps),
     )
     entry = await _setup_entry(hass)
 
@@ -120,4 +120,4 @@ async def test_button_press_uses_the_number_entities_current_values(hass, monkey
     async_fire_time_changed_exact(hass, dt_util.utcnow() + timedelta(seconds=0.2))
     await hass.async_block_till_done()
 
-    assert calls == [("up", 4)]
+    assert calls == [["up"] * 4]

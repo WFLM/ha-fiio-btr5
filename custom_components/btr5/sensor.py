@@ -39,7 +39,8 @@ async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
     mac = entry.data["mac"]
-    lock: asyncio.Lock = hass.data[DOMAIN][entry.entry_id]["lock"]
+    data = hass.data[DOMAIN][entry.entry_id]
+    lock: asyncio.Lock = data["lock"]
     entity_registry = er.async_get(hass)
     legacy_battery_entity_id = entity_registry.async_get_entity_id(
         "sensor", DOMAIN, f"{entry.entry_id}_battery"
@@ -48,8 +49,9 @@ async def async_setup_entry(
         entity_registry.async_remove(legacy_battery_entity_id)
 
     async def _async_update_data() -> int:
-        persistent = hass.data[DOMAIN][entry.entry_id].get("persistent")
         async with lock:
+            # Stay Connected may have been switched while waiting for the lock.
+            persistent = data.get("persistent")
             try:
                 return await hass.async_add_executor_job(
                     gaia.read_battery_persistent_aware, persistent, mac, DEFAULT_TIMEOUT
@@ -64,22 +66,17 @@ async def async_setup_entry(
         update_method=_async_update_data,
         update_interval=timedelta(minutes=BATTERY_POLL_INTERVAL_MINUTES),
     )
-    hass.data[DOMAIN][entry.entry_id]["battery_coordinator"] = coordinator
-    hass.data[DOMAIN][entry.entry_id]["battery_poll_unsubscribe"] = (
-        coordinator.async_add_listener(lambda: None)
-    )
-    await coordinator.async_refresh()
+    data["battery_coordinator"] = coordinator
+    # The first poll comes one interval after setup. One at setup isn't
+    # needed: nothing reads the value, and with Stay Connected on, the held
+    # link's own battery read checks the connection.
+    data["battery_poll_unsubscribe"] = coordinator.async_add_listener(lambda: None)
 
-    async_add_entities([Btr5ConnectionStatusSensor(entry, mac)])
+    async_add_entities([Btr5ConnectionStatusSensor(entry, mac, data)])
 
 
 class Btr5ConnectionStatusSensor(SensorEntity):
-    """Reports Stay Connected's current connection state.
-
-    Plain-polled (see module-level SCAN_INTERVAL) rather than pushed: the
-    persistent connection's status is just an attribute on a plain object
-    with no event-loop access of its own to push updates from.
-    """
+    """Stay Connected's connection state, polled: see PersistentConnection."""
 
     _attr_device_class = SensorDeviceClass.ENUM
     _attr_options = _CONNECTION_STATUS_OPTIONS
@@ -87,8 +84,9 @@ class Btr5ConnectionStatusSensor(SensorEntity):
     _attr_icon = "mdi:bluetooth-transfer"
     _attr_translation_key = "connection_status"
 
-    def __init__(self, entry: ConfigEntry, mac: str) -> None:
-        self._entry = entry
+    def __init__(self, entry: ConfigEntry, mac: str, data: dict) -> None:
+        # Kept after the entry unloads, when hass.data no longer has it.
+        self._data = data
         self._attr_name = "Connection Status"
         self._attr_unique_id = f"{entry.entry_id}_connection_status"
         self._attr_device_info = DeviceInfo(
@@ -100,7 +98,8 @@ class Btr5ConnectionStatusSensor(SensorEntity):
 
     @property
     def native_value(self) -> str:
-        persistent = self.hass.data[DOMAIN][self._entry.entry_id].get("persistent")
-        if persistent is None:
+        persistent = self._data.get("persistent")
+        # Stopped: Stay Connected is off, and the link is about to close.
+        if persistent is None or persistent.stopped:
             return _CONNECTION_STATUS_ONE_TIME
         return persistent.status

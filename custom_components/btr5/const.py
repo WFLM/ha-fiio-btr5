@@ -13,6 +13,10 @@ BATTERY_POLL_INTERVAL_MINUTES = 10
 MAX_BATTERY_PERCENT = 100
 PERSISTENT_RECONNECT_ATTEMPTS = 10
 PERSISTENT_RECONNECT_DELAY_SECONDS = 3.0
+# Long enough for a BTR5 power cycle; button presses don't wait minutes.
+PERSISTENT_RECONNECT_WINDOW_SECONDS = 30.0
+# Presses that waited longer for the BTR5, as while it reconnects, are dropped.
+MAX_PRESS_DELAY_SECONDS = 10.0
 
 GAIA_VENDOR_CSR = 0x000A
 GAIA_ACK_MASK = 0x8000

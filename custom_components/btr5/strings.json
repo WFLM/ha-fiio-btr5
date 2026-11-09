@@ -1,20 +1,33 @@
 {
   "config": {
+    "flow_title": "FiiO BTR5 ({mac})",
     "step": {
       "user": {
         "title": "Connect to FiiO BTR5",
-        "description": "Enter the Bluetooth MAC address of your BTR5. It will be sent one battery-level read as a one-time connectivity check before saving.",
+        "description": "Works only while the BTR5 is a computer's USB DAC; Home Assistant controls it over Bluetooth. Pick your BTR5, found nearby, or enter its MAC address. It will be sent one battery-level read as a one-time connectivity check before saving.",
+        "data": {
+          "mac": "BTR5"
+        }
+      },
+      "manual": {
+        "title": "Connect to FiiO BTR5",
+        "description": "Works only while the BTR5 is a computer's USB DAC; Home Assistant controls it over Bluetooth. Enter the Bluetooth MAC address of your BTR5. It will be sent one battery-level read as a one-time connectivity check before saving.",
         "data": {
           "mac": "Bluetooth MAC address"
         }
+      },
+      "bluetooth_confirm": {
+        "title": "Connect to FiiO BTR5",
+        "description": "Set up the FiiO BTR5 found nearby ({mac})? This works only while the BTR5 is a computer's USB DAC; Home Assistant controls it over Bluetooth. The BTR5 will be sent one battery-level read as a one-time connectivity check before saving."
       }
     },
     "abort": {
-      "already_configured": "This BTR5 is already configured in Home Assistant."
+      "already_configured": "This BTR5 is already configured in Home Assistant.",
+      "already_in_progress": "This BTR5 is already being set up."
     },
     "error": {
       "invalid_mac": "That doesn't look like a Bluetooth MAC address (expected format AA:BB:CC:DD:EE:FF).",
-      "cannot_connect": "Could not reach the BTR5 over Bluetooth. Make sure it is powered on, in range, and not already connected to another host."
+      "cannot_connect": "Could not reach the BTR5 over Bluetooth. Make sure it is in range, connected over USB as the computer's audio output, and not connected to another host. If it still fails, see Troubleshooting in the README."
     }
   },
   "entity": {
